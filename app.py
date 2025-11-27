@@ -496,10 +496,6 @@ class SmartFocusApp:
         if detected_person_vis:
             if is_phone_detected:
                 is_bad = True; reason = "PHONE"
-            
-            # ★ [수정됨] 졸음 감지 로직 단순화: 조건 맞으면 즉시 위반 처리
-            if ear_val < config.THRESHOLDS['EAR']:
-                 is_bad = True; reason = "SLEEP(EYES)"
     
             if mar_val > config.THRESHOLDS['MAR']:
                  is_bad = True; reason = "YAWN"
@@ -510,6 +506,19 @@ class SmartFocusApp:
             # Distracted 로직
             if "distracted" in current_action.lower():
                  is_bad = True; reason = "DISTRACTED"
+        
+            # ★ [수정] 5초 이상 눈 감았을 때만 작동하도록 변경
+            if ear_val < config.THRESHOLDS['EAR']:
+                # 눈을 처음 감았으면 시간 기록 시작
+                if self.t_eyes_start is None:
+                    self.t_eyes_start = curr_time
+                # 감은 지 얼마나 지났는지 계산
+                elif (curr_time - self.t_eyes_start) >= config.DURATION['EYES']:
+                    is_bad = True
+                    reason = "SLEEP(EYES)"
+            else:
+                # 눈을 뜨면 타이머 리셋
+                self.t_eyes_start = None
 
         # 2. 음성 위반
         db_val = audio_data.get('db', -99)
@@ -631,10 +640,19 @@ class SmartFocusApp:
             # Distracted 로직
             if "distracted" in current_action.lower():
                  is_bad = True; reason = "DISTRACTED"
-                 
-            # ★ [수정됨] 졸음 감지 로직 단순화
+
+           # ★ [수정] 5초 이상 눈 감았을 때만 작동하도록 변경
             if ear_val < config.THRESHOLDS['EAR']:
-                 is_bad = True; reason = "SLEEP(EYES)"
+                # 눈을 처음 감았으면 시간 기록 시작
+                if self.t_eyes_start is None:
+                    self.t_eyes_start = curr_time
+                # 감은 지 얼마나 지났는지 계산
+                elif (curr_time - self.t_eyes_start) >= config.DURATION['EYES']:
+                    is_bad = True
+                    reason = "SLEEP(EYES)"
+            else:
+                # 눈을 뜨면 타이머 리셋
+                self.t_eyes_start = None
 
         db_val = audio_data.get('db', -99)
         if self.use_mic and audio_data['is_speech']:
